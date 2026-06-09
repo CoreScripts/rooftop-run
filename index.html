@@ -101,7 +101,20 @@
             }
             document.body.appendChild(unityLoader);
 
-            // Mocking empty bridge functions to prevent internal web assembly game-hook breaks
+            // ==========================================
+            // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
+            // ==========================================
+
+            // Helper function the game uses to talk back to Unity
+            window.sendMessageToUnity = function(objectName, methodName, value) {
+                if (window.unityInstance) {
+                    window.unityInstance.SendMessage(objectName, methodName, value);
+                } else {
+                    console.log("Unity instance not ready yet to receive:", objectName, methodName);
+                }
+            };
+
+            // Mocking platform functions to prevent breaks inside WebAssembly
             window.getPlatformId = () => 'mock';
             window.getPlatformLanguage = () => 'en';
             window.getPlatformPayload = () => '';
@@ -114,9 +127,34 @@
             window.getIsBannerSupported = () => 'false';
             window.getIsInterstitialSupported = () => 'false';
             window.getIsRewardedSupported = () => 'false';
-            window.checkAdBlock = () => sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
-            window.getStorageData = (key) => sendMessageToUnity('OnGetStorageDataSuccess', `${key}{bridge_data_separator}`);
-            window.setStorageData = (key) => sendMessageToUnity('OnSetStorageDataSuccess', key);
+            
+            window.checkAdBlock = () => {
+                window.sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
+            };
+
+            // Redirected local storage loading - reads progress from browser memory
+            window.getStorageData = function(key) {
+                console.log("Mock Load Data Triggered for key:", key);
+                let savedData = localStorage.getItem("rooftop_run_" + key);
+                
+                // Return data with the specific separator format the engine expects
+                if (savedData) {
+                    window.sendMessageToUnity('OnGetStorageDataSuccess', `${key}{bridge_data_separator}${savedData}`);
+                } else {
+                    window.sendMessageToUnity('OnGetStorageDataSuccess', `${key}{bridge_data_separator}`);
+                }
+            };
+
+            // Redirected local storage saving - intercepts coins and finishes to prevent crashing
+            window.setStorageData = function(key, value) {
+                console.log("Mock Save Data Triggered:", key, value);
+                
+                // Save to the browser's local storage so progress stays intact
+                localStorage.setItem("rooftop_run_" + key, value);
+                
+                // Fire back immediate success message so Unity safely finishes the level loop
+                window.sendMessageToUnity('OnSetStorageDataSuccess', key);
+            };
         </script>
     </body>
 </html>
