@@ -114,6 +114,13 @@
                 }
             };
 
+            // Fixes the latest crash: intercepts generic outward platform events cleanly
+            window.sendMessageToPlatform = function(message, payload) {
+                console.log("Intercepted platform message:", message, payload);
+                // Return true or simulate expected return patterns if necessary
+                return true;
+            };
+
             // Mocking platform functions to prevent breaks inside WebAssembly
             window.getPlatformId = () => 'mock';
             window.getPlatformLanguage = () => 'en';
@@ -137,7 +144,6 @@
                 console.log("Mock Load Data Triggered for key:", key);
                 let savedData = localStorage.getItem("rooftop_run_" + key);
                 
-                // Return data with the specific separator format the engine expects
                 if (savedData) {
                     window.sendMessageToUnity('OnGetStorageDataSuccess', `${key}{bridge_data_separator}${savedData}`);
                 } else {
@@ -148,11 +154,7 @@
             // Redirected local storage saving - intercepts coins and finishes to prevent crashing
             window.setStorageData = function(key, value) {
                 console.log("Mock Save Data Triggered:", key, value);
-                
-                // Save to the browser's local storage so progress stays intact
                 localStorage.setItem("rooftop_run_" + key, value);
-                
-                // Fire back immediate success message so Unity safely finishes the level loop
                 window.sendMessageToUnity('OnSetStorageDataSuccess', key);
             };
         </script>
