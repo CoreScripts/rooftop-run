@@ -105,29 +105,26 @@
             // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
             // ==========================================
 
-            // Dynamic sender that probes common Unity object hooks to fix the "object not found" error
+            // Resilient communication engine that targets scene objects and hooks directly into the Module fallback layer
             window.sendMessageToUnity = function(methodName, value) {
-                if (!window.unityInstance) {
-                    console.log("Unity instance not ready yet to receive:", methodName);
-                    return;
-                }
-                
-                // Prioritizing PlaygamaBridge based on internal framework signatures
-                let targetObjects = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'GameDistribution', 'YandexGame'];
-                let messageSent = false;
+                if (!window.unityInstance) return;
 
-                for (let obj of targetObjects) {
+                // Targeted game objects from MadHook framework configurations
+                let targetObjects = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'GameDistribution', 'YandexGame', 'GameAnalyticsUnitySDK'];
+                
+                targetObjects.forEach(obj => {
                     try {
                         window.unityInstance.SendMessage(obj, methodName, value);
-                        messageSent = true;
                     } catch(e) {
-                        // Silent catch to fall back to the next object name mapping
+                        // Suppress logs for missing structural targets
                     }
-                }
-                
-                if (!messageSent) {
-                    // Final fallback attempt
-                    window.unityInstance.SendMessage('PlaygamaBridge', methodName, value);
+                });
+
+                // Direct fallback context injection if the game is listening via internal Module definitions
+                if (window.unityInstance.Module && typeof window.unityInstance.Module.SendMessage === 'function') {
+                    targetObjects.forEach(obj => {
+                        try { window.unityInstance.Module.SendMessage(obj, methodName, value); } catch(e){}
+                    });
                 }
             };
 
@@ -161,11 +158,10 @@
                 window.sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
             };
 
-            // Handles complex bulk split loading requests cleanly (Fixes Level 1 reset)
+            // Handles complex bulk split loading requests cleanly
             window.getStorageData = function(keysString) {
                 console.log("Mock Load Data Triggered for raw keys:", keysString);
                 
-                // Split keys apart whether they are singular or combined by Playgama's pattern
                 let keys = keysString.split('{bridge_keys_separator}');
                 let results = [];
 
@@ -175,14 +171,13 @@
                     results.push(`${cleanedKey}{bridge_data_separator}${savedValue}`);
                 });
 
-                // Join them back up using the payload array format expected by Playgama
                 let compiledPayload = results.join('{bridge_array_separator}');
                 console.log("Sending loaded payload to Unity:", compiledPayload);
                 
                 window.sendMessageToUnity('OnGetStorageDataSuccess', compiledPayload);
             };
 
-            // Redirected local storage saving - writes progress data straight into browser memory
+            // Redirected local storage saving
             window.setStorageData = function(key, value) {
                 console.log("Mock Save Data Triggered:", key, value);
                 localStorage.setItem("rooftop_run_" + key, value);
