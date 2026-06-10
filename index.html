@@ -64,7 +64,7 @@
                 canvas.focus()
             })
             
-            // Re-structured deep mock setup mimicking a complete native Playgama API integration environment
+            // Mock object matching Playgama properties
             window.bridge = {
                 engine: 'unity',
                 platform: { id: 'mock', language: 'en', payload: '', tld: 'com', isAudioEnabled: true },
@@ -118,20 +118,29 @@
             // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
             // ==========================================
 
-            // Resilient global communication layer that directly queries the engine instances
+            // Precise function multiplexer targeting official Playgama SDK callback listeners
             window.sendMessageToUnity = function(methodName, value) {
                 if (!window.unityInstance) return;
                 
-                // Fallback targets + explicit Playgama core hooks
-                let targets = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'Main', 'GameManager'];
-                
-                // We add native Playgama direct string callback mapping methods to force the engine to accept the save data format
+                let targets = ['PlaygamaBridge', 'Bridge', 'Main', 'GameManager'];
                 let methods = [methodName];
+                
+                // Real Playgama Bridge API compilation variants
                 if (methodName === 'OnGetStorageDataSuccess') {
-                    methods.push('OnStorageGetSuccess', 'OnGetStorageSuccess', 'OnGetDataSuccess');
+                    methods.push(
+                        'OnGetStorageCompleted', 
+                        'OnStorageGetCompleted', 
+                        'OnGetStorageDataCompleted',
+                        'OnGetStorageSuccess'
+                    );
                 }
                 if (methodName === 'OnSetStorageDataSuccess') {
-                    methods.push('OnStorageSetSuccess', 'OnSetStorageSuccess', 'OnSetDataSuccess');
+                    methods.push(
+                        'OnSetStorageCompleted', 
+                        'OnStorageSetCompleted', 
+                        'OnSetStorageDataCompleted',
+                        'OnSetStorageSuccess'
+                    );
                 }
 
                 targets.forEach(obj => {
@@ -163,7 +172,7 @@
                 window.sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
             };
 
-            // Enhanced data parsing structure matching Playgama data arrays
+            // Handles bulk split loading requests
             window.getStorageData = function(keysString) {
                 console.log("Mock Load Data Triggered for raw keys:", keysString);
                 let keys = keysString.split('{bridge_keys_separator}');
@@ -178,18 +187,8 @@
                 let compiledPayload = results.join('{bridge_array_separator}');
                 console.log("Sending loaded payload to Unity:", compiledPayload);
                 
+                // Fire standard variant and official framework variants
                 window.sendMessageToUnity('OnGetStorageDataSuccess', compiledPayload);
-                
-                // CRITICAL: We broadcast an additional JSON format callback directly to Playgama targets 
-                // because some engine compiles expect a clean stringified object representation instead of separator codes.
-                try {
-                    let jsonObj = {};
-                    keys.forEach(key => {
-                        let cleanedKey = key.trim();
-                        jsonObj[cleanedKey] = localStorage.getItem("rooftop_run_" + cleanedKey) || "";
-                    });
-                    window.sendMessageToUnity('OnStorageGetSuccess', JSON.stringify(jsonObj));
-                } catch(e) {}
             };
 
             window.setStorageData = function(key, value) {
