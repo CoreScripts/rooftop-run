@@ -20,7 +20,6 @@
                 top: 0px;
                 left: 0px;
             }
-            /* Clean loading indicator */
             #loading-text {
                 position: absolute;
                 top: 50%;
@@ -39,7 +38,6 @@
         <canvas id="canvas" class="fullscreen-canvas"></canvas>
 
         <script>
-            // Mobile viewport scaling logic
             if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
                 let meta = document.createElement('meta')
                 meta.name = 'viewport'
@@ -50,7 +48,6 @@
             let canvas = document.getElementById('canvas')
             window.unityInstance = null
 
-            // Bypassed bridge progress tracker
             function onUnityLoadingProgressChanged(progress) {
                 let loadingEl = document.getElementById('loading-text');
                 if (loadingEl) {
@@ -67,7 +64,7 @@
                 canvas.focus()
             })
             
-            // Re-structured global mock object mapping directly to Playgama's native library properties
+            // Re-structured deep mock setup mimicking a complete native Playgama API integration environment
             window.bridge = {
                 engine: 'unity',
                 platform: { id: 'mock', language: 'en', payload: '', tld: 'com', isAudioEnabled: true },
@@ -121,33 +118,34 @@
             // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
             // ==========================================
 
-            // Silent communication handler that sends data cleanly back to the main game layer
+            // Resilient global communication layer that directly queries the engine instances
             window.sendMessageToUnity = function(methodName, value) {
                 if (!window.unityInstance) return;
                 
-                let targetObjects = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'Main', 'GameManager'];
-                targetObjects.forEach(obj => {
-                    try {
-                        window.unityInstance.SendMessage(obj, methodName, value);
-                    } catch(e) {
-                        // Suppress logs for missing runtime contexts
-                    }
+                // Fallback targets + explicit Playgama core hooks
+                let targets = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'Main', 'GameManager'];
+                
+                // We add native Playgama direct string callback mapping methods to force the engine to accept the save data format
+                let methods = [methodName];
+                if (methodName === 'OnGetStorageDataSuccess') {
+                    methods.push('OnStorageGetSuccess', 'OnGetStorageSuccess', 'OnGetDataSuccess');
+                }
+                if (methodName === 'OnSetStorageDataSuccess') {
+                    methods.push('OnStorageSetSuccess', 'OnSetStorageSuccess', 'OnSetDataSuccess');
+                }
+
+                targets.forEach(obj => {
+                    methods.forEach(m => {
+                        try {
+                            window.unityInstance.SendMessage(obj, m, value);
+                        } catch(e) {}
+                    });
                 });
             };
 
-            // Intercepts generic outward platform events cleanly
-            window.sendMessageToPlatform = function(message, payload) {
-                console.log("Intercepted platform message:", message, payload);
-                return true;
-            };
+            window.sendMessageToPlatform = function(message, payload) { return true; };
+            window.setMinimumDelayBetweenInterstitial = function(seconds) { return true; };
 
-            // Catches the interstitial timing configuration cleanly
-            window.setMinimumDelayBetweenInterstitial = function(seconds) {
-                console.log("Intercepted ad delay configuration:", seconds, "seconds");
-                return true;
-            };
-
-            // Mocking platform functions to prevent breaks inside WebAssembly
             window.getPlatformId = () => 'mock';
             window.getPlatformLanguage = () => 'en';
             window.getPlatformPayload = () => '';
@@ -165,10 +163,9 @@
                 window.sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
             };
 
-            // Handles complex bulk split loading requests cleanly using Playgama's fallback syntax
+            // Enhanced data parsing structure matching Playgama data arrays
             window.getStorageData = function(keysString) {
                 console.log("Mock Load Data Triggered for raw keys:", keysString);
-                
                 let keys = keysString.split('{bridge_keys_separator}');
                 let results = [];
 
@@ -182,9 +179,19 @@
                 console.log("Sending loaded payload to Unity:", compiledPayload);
                 
                 window.sendMessageToUnity('OnGetStorageDataSuccess', compiledPayload);
+                
+                // CRITICAL: We broadcast an additional JSON format callback directly to Playgama targets 
+                // because some engine compiles expect a clean stringified object representation instead of separator codes.
+                try {
+                    let jsonObj = {};
+                    keys.forEach(key => {
+                        let cleanedKey = key.trim();
+                        jsonObj[cleanedKey] = localStorage.getItem("rooftop_run_" + cleanedKey) || "";
+                    });
+                    window.sendMessageToUnity('OnStorageGetSuccess', JSON.stringify(jsonObj));
+                } catch(e) {}
             };
 
-            // Redirected local storage saving
             window.setStorageData = function(key, value) {
                 console.log("Mock Save Data Triggered:", key, value);
                 localStorage.setItem("rooftop_run_" + key, value);
