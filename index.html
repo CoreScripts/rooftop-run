@@ -64,7 +64,7 @@
                 canvas.focus()
             })
             
-            // Mock object matching Playgama properties
+            // Native direct mock storage container
             window.bridge = {
                 engine: 'unity',
                 platform: { id: 'mock', language: 'en', payload: '', tld: 'com', isAudioEnabled: true },
@@ -76,13 +76,16 @@
                         let keyList = typeof keys === 'string' ? keys.split(',') : keys;
                         let results = {};
                         keyList.forEach(k => {
-                            results[k] = localStorage.getItem("rooftop_run_" + k.trim()) || "";
+                            let cleanedKey = k.trim();
+                            results[cleanedKey] = localStorage.getItem("rooftop_run_" + cleanedKey) || "";
                         });
                         if (typeof callback === 'function') callback(null, results);
+                        return results;
                     },
                     set: function(key, value, callback) {
                         localStorage.setItem("rooftop_run_" + key, value);
                         if (typeof callback === 'function') callback(null);
+                        return true;
                     }
                 },
                 advertisement: { isBannerSupported: false, isInterstitialSupported: false, isRewardedSupported: false }
@@ -115,43 +118,11 @@
             document.body.appendChild(unityLoader);
 
             // ==========================================
-            // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
+            // DIRECT INTEROP SYNCHRONOUS ROUTING
             // ==========================================
 
-            // Precise function multiplexer targeting official Playgama SDK callback listeners
-            window.sendMessageToUnity = function(methodName, value) {
-                if (!window.unityInstance) return;
-                
-                let targets = ['PlaygamaBridge', 'Bridge', 'Main', 'GameManager'];
-                let methods = [methodName];
-                
-                // Real Playgama Bridge API compilation variants
-                if (methodName === 'OnGetStorageDataSuccess') {
-                    methods.push(
-                        'OnGetStorageCompleted', 
-                        'OnStorageGetCompleted', 
-                        'OnGetStorageDataCompleted',
-                        'OnGetStorageSuccess'
-                    );
-                }
-                if (methodName === 'OnSetStorageDataSuccess') {
-                    methods.push(
-                        'OnSetStorageCompleted', 
-                        'OnStorageSetCompleted', 
-                        'OnSetStorageDataCompleted',
-                        'OnSetStorageSuccess'
-                    );
-                }
-
-                targets.forEach(obj => {
-                    methods.forEach(m => {
-                        try {
-                            window.unityInstance.SendMessage(obj, m, value);
-                        } catch(e) {}
-                    });
-                });
-            };
-
+            // Clean up old fallback logging messaging pipeline entirely
+            window.sendMessageToUnity = function(methodName, value) { return; };
             window.sendMessageToPlatform = function(message, payload) { return true; };
             window.setMinimumDelayBetweenInterstitial = function(seconds) { return true; };
 
@@ -167,14 +138,11 @@
             window.getIsBannerSupported = () => 'false';
             window.getIsInterstitialSupported = () => 'false';
             window.getIsRewardedSupported = () => 'false';
-            
-            window.checkAdBlock = () => {
-                window.sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
-            };
+            window.checkAdBlock = () => 'false';
 
-            // Handles bulk split loading requests
+            // Handles complex bulk split loading requests synchronously
             window.getStorageData = function(keysString) {
-                console.log("Mock Load Data Triggered for raw keys:", keysString);
+                console.log("Direct Interop Data Fetch Initiated:", keysString);
                 let keys = keysString.split('{bridge_keys_separator}');
                 let results = [];
 
@@ -185,16 +153,17 @@
                 });
 
                 let compiledPayload = results.join('{bridge_array_separator}');
-                console.log("Sending loaded payload to Unity:", compiledPayload);
+                console.log("Direct Return Payload to Engine:", compiledPayload);
                 
-                // Fire standard variant and official framework variants
-                window.sendMessageToUnity('OnGetStorageDataSuccess', compiledPayload);
+                // CRITICAL: Return the output value directly back to the calling WebGL WebAssembly layer thread
+                return compiledPayload;
             };
 
+            // Redirected local storage saving synchronously
             window.setStorageData = function(key, value) {
-                console.log("Mock Save Data Triggered:", key, value);
+                console.log("Direct Interop Save Initiated:", key, value);
                 localStorage.setItem("rooftop_run_" + key, value);
-                window.sendMessageToUnity('OnSetStorageDataSuccess', key);
+                return "true";
             };
         </script>
     </body>
