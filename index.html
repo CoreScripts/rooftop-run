@@ -67,11 +67,27 @@
                 canvas.focus()
             })
             
-            // Dummy bridge object to prevent Unity console errors if internal scripts check for it
+            // Re-structured global mock object mapping directly to Playgama's native library properties
             window.bridge = {
                 engine: 'unity',
                 platform: { id: 'mock', language: 'en', payload: '', tld: 'com', isAudioEnabled: true },
-                storage: { defaultType: 'local', isSupported: () => true, isAvailable: () => true },
+                storage: { 
+                    defaultType: 'local', 
+                    isSupported: () => true, 
+                    isAvailable: () => true,
+                    get: function(keys, callback) {
+                        let keyList = typeof keys === 'string' ? keys.split(',') : keys;
+                        let results = {};
+                        keyList.forEach(k => {
+                            results[k] = localStorage.getItem("rooftop_run_" + k.trim()) || "";
+                        });
+                        if (typeof callback === 'function') callback(null, results);
+                    },
+                    set: function(key, value, callback) {
+                        localStorage.setItem("rooftop_run_" + key, value);
+                        if (typeof callback === 'function') callback(null);
+                    }
+                },
                 advertisement: { isBannerSupported: false, isInterstitialSupported: false, isRewardedSupported: false }
             };
 
@@ -105,31 +121,17 @@
             // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
             // ==========================================
 
-            // Resilient dual-route method multiplexer targeting confirmed active scene listeners
+            // Silent communication handler that sends data cleanly back to the main game layer
             window.sendMessageToUnity = function(methodName, value) {
                 if (!window.unityInstance) return;
-
-                // Confirmed scene objects that have listeners ready
-                let confirmedObjects = ['Main', 'GameManager'];
                 
-                // Map out common alternative SDK nomenclature variations
-                let methodVariations = [methodName];
-                if (methodName === 'OnGetStorageDataSuccess') {
-                    methodVariations.push('OnGetDataSuccess', 'OnStorageGetSuccess', 'OnGetStorageSuccess', 'OnGetStorageData');
-                }
-                if (methodName === 'OnSetStorageDataSuccess') {
-                    methodVariations.push('OnSetDataSuccess', 'OnStorageSetSuccess', 'OnSetStorageSuccess', 'OnSetStorageData');
-                }
-
-                // Push variations directly to active scene contexts cleanly
-                confirmedObjects.forEach(obj => {
-                    methodVariations.forEach(method => {
-                        try {
-                            window.unityInstance.SendMessage(obj, method, value);
-                        } catch(e) {
-                            // Internally caught to clear out remaining pipeline runs
-                        }
-                    });
+                let targetObjects = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'Main', 'GameManager'];
+                targetObjects.forEach(obj => {
+                    try {
+                        window.unityInstance.SendMessage(obj, methodName, value);
+                    } catch(e) {
+                        // Suppress logs for missing runtime contexts
+                    }
                 });
             };
 
@@ -163,7 +165,7 @@
                 window.sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
             };
 
-            // Handles complex bulk split loading requests cleanly
+            // Handles complex bulk split loading requests cleanly using Playgama's fallback syntax
             window.getStorageData = function(keysString) {
                 console.log("Mock Load Data Triggered for raw keys:", keysString);
                 
