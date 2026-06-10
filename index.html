@@ -112,8 +112,8 @@
                     return;
                 }
                 
-                // Common names that WebGL game bridges use inside the engine hierarchy
-                let targetObjects = ['Bridge', 'PlaygamaBridge', 'AdBridge', 'GameDistribution', 'YandexGame'];
+                // Prioritizing PlaygamaBridge based on internal framework signatures
+                let targetObjects = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'GameDistribution', 'YandexGame'];
                 let messageSent = false;
 
                 for (let obj of targetObjects) {
@@ -127,7 +127,7 @@
                 
                 if (!messageSent) {
                     // Final fallback attempt
-                    window.unityInstance.SendMessage('Bridge', methodName, value);
+                    window.unityInstance.SendMessage('PlaygamaBridge', methodName, value);
                 }
             };
 
