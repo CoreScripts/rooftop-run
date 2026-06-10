@@ -105,23 +105,31 @@
             // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
             // ==========================================
 
-            // Master communication router targeting the entire suite of prospective gameObjects
+            // Resilient dual-route method multiplexer targeting confirmed active scene listeners
             window.sendMessageToUnity = function(methodName, value) {
                 if (!window.unityInstance) return;
 
-                // Absolute maximum list of probable bridge handlers inside standard platform WebGL hierarchies
-                let targetObjects = [
-                    'PlaygamaBridge', 'Bridge', 'AdBridge', 'GameDistribution', 
-                    'YandexGame', 'GameAnalyticsUnitySDK', 'CrazyGames', 'GamePix',
-                    'Progress', 'Storage', 'SaveManager', 'Main', 'GameManager', 'Holder'
-                ];
+                // Confirmed scene objects that have listeners ready
+                let confirmedObjects = ['Main', 'GameManager'];
                 
-                targetObjects.forEach(obj => {
-                    try {
-                        window.unityInstance.SendMessage(obj, methodName, value);
-                    } catch(e) {
-                        // Suppressed internally
-                    }
+                // Map out common alternative SDK nomenclature variations
+                let methodVariations = [methodName];
+                if (methodName === 'OnGetStorageDataSuccess') {
+                    methodVariations.push('OnGetDataSuccess', 'OnStorageGetSuccess', 'OnGetStorageSuccess', 'OnGetStorageData');
+                }
+                if (methodName === 'OnSetStorageDataSuccess') {
+                    methodVariations.push('OnSetDataSuccess', 'OnStorageSetSuccess', 'OnSetStorageSuccess', 'OnSetStorageData');
+                }
+
+                // Push variations directly to active scene contexts cleanly
+                confirmedObjects.forEach(obj => {
+                    methodVariations.forEach(method => {
+                        try {
+                            window.unityInstance.SendMessage(obj, method, value);
+                        } catch(e) {
+                            // Internally caught to clear out remaining pipeline runs
+                        }
+                    });
                 });
             };
 
