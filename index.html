@@ -105,27 +105,24 @@
             // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
             // ==========================================
 
-            // Resilient communication engine that targets scene objects and hooks directly into the Module fallback layer
+            // Master communication router targeting the entire suite of prospective gameObjects
             window.sendMessageToUnity = function(methodName, value) {
                 if (!window.unityInstance) return;
 
-                // Targeted game objects from MadHook framework configurations
-                let targetObjects = ['PlaygamaBridge', 'Bridge', 'AdBridge', 'GameDistribution', 'YandexGame', 'GameAnalyticsUnitySDK'];
+                // Absolute maximum list of probable bridge handlers inside standard platform WebGL hierarchies
+                let targetObjects = [
+                    'PlaygamaBridge', 'Bridge', 'AdBridge', 'GameDistribution', 
+                    'YandexGame', 'GameAnalyticsUnitySDK', 'CrazyGames', 'GamePix',
+                    'Progress', 'Storage', 'SaveManager', 'Main', 'GameManager', 'Holder'
+                ];
                 
                 targetObjects.forEach(obj => {
                     try {
                         window.unityInstance.SendMessage(obj, methodName, value);
                     } catch(e) {
-                        // Suppress logs for missing structural targets
+                        // Suppressed internally
                     }
                 });
-
-                // Direct fallback context injection if the game is listening via internal Module definitions
-                if (window.unityInstance.Module && typeof window.unityInstance.Module.SendMessage === 'function') {
-                    targetObjects.forEach(obj => {
-                        try { window.unityInstance.Module.SendMessage(obj, methodName, value); } catch(e){}
-                    });
-                }
             };
 
             // Intercepts generic outward platform events cleanly
