@@ -114,10 +114,15 @@
                 }
             };
 
-            // Fixes the latest crash: intercepts generic outward platform events cleanly
+            // Intercepts generic outward platform events cleanly
             window.sendMessageToPlatform = function(message, payload) {
                 console.log("Intercepted platform message:", message, payload);
-                // Return true or simulate expected return patterns if necessary
+                return true;
+            };
+
+            // Fixes the latest crash: catches the interstitial timing configuration cleanly
+            window.setMinimumDelayBetweenInterstitial = function(seconds) {
+                console.log("Intercepted ad delay configuration:", seconds, "seconds");
                 return true;
             };
 
