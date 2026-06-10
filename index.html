@@ -105,12 +105,29 @@
             // PLAYGAMA AD-BRIDGE EMULATION INTERFACE 
             // ==========================================
 
-            // Helper function the game uses to talk back to Unity
-            window.sendMessageToUnity = function(objectName, methodName, value) {
-                if (window.unityInstance) {
-                    window.unityInstance.SendMessage(objectName, methodName, value);
-                } else {
-                    console.log("Unity instance not ready yet to receive:", objectName, methodName);
+            // Dynamic sender that probes common Unity object hooks to fix the "object not found" error
+            window.sendMessageToUnity = function(methodName, value) {
+                if (!window.unityInstance) {
+                    console.log("Unity instance not ready yet to receive:", methodName);
+                    return;
+                }
+                
+                // Common names that WebGL game bridges use inside the engine hierarchy
+                let targetObjects = ['Bridge', 'PlaygamaBridge', 'AdBridge', 'GameDistribution', 'YandexGame'];
+                let messageSent = false;
+
+                for (let obj of targetObjects) {
+                    try {
+                        window.unityInstance.SendMessage(obj, methodName, value);
+                        messageSent = true;
+                    } catch(e) {
+                        // Silent catch to fall back to the next object name mapping
+                    }
+                }
+                
+                if (!messageSent) {
+                    // Final fallback attempt
+                    window.unityInstance.SendMessage('Bridge', methodName, value);
                 }
             };
 
@@ -120,7 +137,7 @@
                 return true;
             };
 
-            // Fixes the latest crash: catches the interstitial timing configuration cleanly
+            // Catches the interstitial timing configuration cleanly
             window.setMinimumDelayBetweenInterstitial = function(seconds) {
                 console.log("Intercepted ad delay configuration:", seconds, "seconds");
                 return true;
@@ -144,19 +161,28 @@
                 window.sendMessageToUnity('OnCheckAdBlockCompleted', 'false');
             };
 
-            // Redirected local storage loading - reads progress from browser memory
-            window.getStorageData = function(key) {
-                console.log("Mock Load Data Triggered for key:", key);
-                let savedData = localStorage.getItem("rooftop_run_" + key);
+            // Handles complex bulk split loading requests cleanly (Fixes Level 1 reset)
+            window.getStorageData = function(keysString) {
+                console.log("Mock Load Data Triggered for raw keys:", keysString);
                 
-                if (savedData) {
-                    window.sendMessageToUnity('OnGetStorageDataSuccess', `${key}{bridge_data_separator}${savedData}`);
-                } else {
-                    window.sendMessageToUnity('OnGetStorageDataSuccess', `${key}{bridge_data_separator}`);
-                }
+                // Split keys apart whether they are singular or combined by Playgama's pattern
+                let keys = keysString.split('{bridge_keys_separator}');
+                let results = [];
+
+                keys.forEach(key => {
+                    let cleanedKey = key.trim();
+                    let savedValue = localStorage.getItem("rooftop_run_" + cleanedKey) || "";
+                    results.push(`${cleanedKey}{bridge_data_separator}${savedValue}`);
+                });
+
+                // Join them back up using the payload array format expected by Playgama
+                let compiledPayload = results.join('{bridge_array_separator}');
+                console.log("Sending loaded payload to Unity:", compiledPayload);
+                
+                window.sendMessageToUnity('OnGetStorageDataSuccess', compiledPayload);
             };
 
-            // Redirected local storage saving - intercepts coins and finishes to prevent crashing
+            // Redirected local storage saving - writes progress data straight into browser memory
             window.setStorageData = function(key, value) {
                 console.log("Mock Save Data Triggered:", key, value);
                 localStorage.setItem("rooftop_run_" + key, value);
